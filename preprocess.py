@@ -8,6 +8,8 @@ The final representation is:
 
 age||gender||protocol_class_number||reason_for_visit
 
+Output is final.csv (Other intermediate files don't matter) 
+
 """
 
 import numpy as np
