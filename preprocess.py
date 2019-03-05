@@ -1,6 +1,9 @@
 """
 Run once to get nicely formatted data
 
+IMPORTANT: You need to first create a folder 'data' and inside there a folder called 'processed' (feel free to change)
+		   Then, move the 'neuro_protocol_sent_021419.xlsx' file into data and run this script.
+
 """
 
 import numpy as np
