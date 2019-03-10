@@ -1,4 +1,5 @@
 from sklearn.model_selection import train_test_split
+import sys
 
 FILE_PATH = 'data/processed/final.csv'
 DELIMITER = '||'
@@ -41,6 +42,25 @@ def main():
 	print("Creating valid file with ", len(X_valid), " examples.")
 	saveToNewFile(X_valid, Y_valid, VALID_FILE_PATH)
 
+def _remove_label(source_file_path):
+	target_file_path = source_file_path[:-4] + "_noLabel.txt"
+	
+	with open(source_file_path, 'r') as source:
+		with open(target_file_path, 'w') as target:
+			for line in source:
+				label, text = line.split(" ", 1)
+				target.write(text)
+
+def remove_label():
+	source_file_path = TRAIN_FILE_PATH 
+	_remove_label(source_file_path)
+
 
 if __name__ == "__main__":
-	main()
+	if len(sys.argv) > 1:
+		if sys.argv[1] != "remove_label":
+			print("argument not supported")
+		else:
+			remove_label()
+	else: 
+		main()

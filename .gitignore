@@ -2,3 +2,5 @@
 .env/
 data/
 outputs/
+randomstuff.py
+src/__pycache__

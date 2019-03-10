@@ -5,7 +5,7 @@ VALID_FILE_PATH = 'data/processed/fastTextInput_valid.txt'
 
 
 def main():
-	model = fastText.load_model("outputs/model_baseline_subwords.bin")
+	model = fastText.load_model("outputs/model_baseline.bin")
 	total = 0
 	correct = 0
 	with open(VALID_FILE_PATH, 'r') as f:
