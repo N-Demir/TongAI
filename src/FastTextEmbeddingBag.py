@@ -18,8 +18,9 @@ from torch.autograd import Variable
 
 
 class FastTextEmbeddingBag(EmbeddingBag):
-	def __init__(self, model_path):
+	def __init__(self, model_path, device):
 		self.model = load_model(model_path)
+		self.device = device
 		input_matrix = self.model.get_input_matrix()
 		input_matrix_shape = input_matrix.shape
 		self.embedding_dim = input_matrix_shape[1]
@@ -30,17 +31,6 @@ class FastTextEmbeddingBag(EmbeddingBag):
 		"""
 		expecting sentences to be of the shape batch_size * max_sentence_len
 		"""
-		# word_subinds = np.empty([0], dtype=np.int64)
-		# word_offsets = [0]
-		# for word in words:
-		#     _, subinds = self.model.get_subwords(word)
-		#     word_subinds = np.concatenate((word_subinds, subinds))
-		#     word_offsets.append(word_offsets[-1] + len(subinds))
-		# word_offsets = word_offsets[:-1]
-		# ind = Variable(torch.LongTensor(word_subinds))
-		# offsets = Variable(torch.LongTensor(word_offsets))
-		# return super().forward(ind, offsets)
-
 		batch_size = len(sentences)
 		max_sentence_len = len(sentences[0])
 
@@ -53,8 +43,8 @@ class FastTextEmbeddingBag(EmbeddingBag):
 				word_subinds = np.concatenate((word_subinds, subinds))
 				word_offsets.append(word_offsets[-1] + len(subinds))
 			word_offsets = word_offsets[:-1]
-			ind = Variable(torch.LongTensor(word_subinds))
-			offsets = Variable(torch.LongTensor(word_offsets))
+			ind = Variable(torch.tensor(word_subinds, dtype = torch.long, device = self.device))
+			offsets = Variable(torch.tensor(word_offsets, dtype = torch.long, device = self.device))
 			embeddings[i] = super().forward(ind, offsets)
 		return embeddings
 

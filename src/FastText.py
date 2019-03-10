@@ -4,12 +4,17 @@ from FastTextEmbeddingBag import FastTextEmbeddingBag
 from torch.optim import Adam
 import numpy as np
 from sklearn.metrics import accuracy_score
+from math import ceil
+import sys
+
+MODEL_PATH = '../outputs/bestFastText.pth.tar'
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class FastText(nn.Module):
     def __init__(self, num_classes, hidden_size, model_path):
         super().__init__()
         
-        self.embedding = FastTextEmbeddingBag(model_path)
+        self.embedding = FastTextEmbeddingBag(model_path, DEVICE)
         self.embedding.weight.requires_grad = False
 
         self.fc_1 = nn.Linear(self.embedding.embedding_dim, hidden_size)
@@ -28,7 +33,6 @@ class FastText(nn.Module):
         # output = torch.cat((classes_prob, contrast), dim = -1)
         return output
 
-
 DELIMITER = '||'
 def readData(file_path):
 	# Let's dejsonify
@@ -39,12 +43,12 @@ def readData(file_path):
 		for line in f:
 			assert(len(line.split(DELIMITER)) == 4)
 
-			X.append(line.split(DELIMITER)[3])
-			Y.append(line.split(DELIMITER)[2])
+			X.append(line.split(DELIMITER)[2])
+			Y.append(line.split(DELIMITER)[3])
 
 	return (X, Y)
 
-def processX(X, max_len = 50):
+def processX(X, max_len = 100):
 	num_sentences = len(X)
 	X_new = [['<pad>' for i in range(max_len)] for j in range(num_sentences)]
 	for i, sentence in enumerate(X):
@@ -56,41 +60,76 @@ def processX(X, max_len = 50):
 	return X_new
 
 def processY(Y):
-	num_examples = len(Y)
-	protocol_indices = {protocol: ind for ind, protocol in enumerate(set(Y))}
-	num_classes = len(protocol_indices)
-	Y_new = [protocol_indices[protocol] for protocol in Y]
-	return num_classes, Y_new
+	Y_new = [int(index.rstrip('\n')) for index in Y]
+	num_classes = len(set(Y_new))
+	return num_classes, torch.tensor(Y_new, dtype = torch.long, device = DEVICE)
 
 
-def main():
-	X,Y = readData("../data/processed/small_processed.csv")
+def main(continue_training):
+	# get Data
+	X, Y = readData("../data/processed/processed_train.csv")
+	X_eval, Y_eval = readData("../data/processed/processed_test.csv") 
 	X_processed = processX(X)
+	X_eval = processX(X_eval)
 	num_classes, Y_processed = processY(Y)
-	Y_processed = torch.LongTensor(Y_processed)
-	fastText = FastText(num_classes, num_classes * 2, "../outputs/embeddings/fasttext_train_embed.bin")
+	_, Y_eval = processY(Y_eval)
+
+	num_train = len(X)
+
+	fastText = FastText(num_classes, num_classes * 2, "../outputs/embeddings/fasttext_brain_embed.bin")
+	if continue_training:
+		print("Loading model from ", MODEL_PATH)
+		fastText.load_state_dict(torch.load(MODEL_PATH))
 	criterion = nn.NLLLoss()
 	optimizer = Adam(fastText.parameters())
 
+	#training with GPU
+	fastText = fastText.to(DEVICE)
+	criterion = criterion.to(DEVICE)
+
 	# training params
-	num_epochs = 2000
+	num_epochs = 100
+	batch_size = 128
 
+	bestAccuracy = 0
+	bestEpoch = 0
 	for epoch in range(num_epochs):
-		optimizer.zero_grad()
+		print("Beginning epoch ", epoch)
+		running_loss = 0
+		fastText.train()
+		for i in range(ceil(num_train / batch_size)):
+			beginIndex = i* batch_size
+			endIndex = min(beginIndex + batch_size, num_train)
+			X_input = X_processed[beginIndex: endIndex]	
+			Y_input = Y_processed[beginIndex: endIndex]
+			optimizer.zero_grad()
 
-		outputs = fastText(X_processed)
-		loss = criterion(outputs, Y_processed)
-		loss.backward()
-		optimizer.step()
-		if epoch % 10 == 0:
-			predictions = torch.argmax(outputs, dim = -1)
-			accuracy = accuracy_score(Y_processed.numpy(), predictions.numpy())
-			print("epoch ", epoch, " loss: ", loss.item(), " accuracy: ", accuracy)
+			outputs = fastText(X_input)
+			loss = criterion(outputs, Y_input)
+			loss.backward()
+			optimizer.step()
+			running_loss += loss.item()
+		print("epoch ", epoch, " loss: ", running_loss)
+		fastText.eval()
+		outputs = fastText(X_eval)
+		loss = criterion(outputs, Y_eval)
+		predictions = torch.argmax(outputs, dim = -1)
+		accuracy = accuracy_score(Y_eval.numpy(), predictions.numpy())
+		print("epoch ", epoch, " eval_loss: ", loss.item(), " eval_accuracy : ", accuracy)
+		if accuracy > bestAccuracy:
+			torch.save(fastText.state_dict(), MODEL_PATH)
+			bestAccuracy = accuracy
+			bestEpoch = epoch
+	print("Best accuracy: ", bestAccuracy, " on epoch ", bestEpoch)
 
-	outputs = fastText(X_processed)
-	predictions = torch.argmax(outputs, dim = -1)
-	accuracy = accuracy_score(Y_processed.numpy(), predictions.numpy())
-	print("Final Accuracy: ", accuracy)
 
 if __name__ == "__main__":
- 	main()
+	continue_training = False
+	if len(sys.argv) > 1:
+		if sys.argv[1] == 'continue':
+			continue_training = True
+		elif sys.argv[1] != 'new':
+			print("Arg ", sys.argv[1], " not supported. Please use continue or new")
+	else:
+		print("Provide argument continue or new")
+	main(continue_training)
