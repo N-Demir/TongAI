@@ -19,6 +19,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import recall_score, accuracy_score
 
 import numpy as np
 
@@ -34,13 +35,14 @@ def readInData(file_path):
 		for line in f:
 			assert(len(line.split(DELIMITER)) == 4)
 
-			X.append(line.split(DELIMITER)[3])
-			Y.append(line.split(DELIMITER)[2])
+			X.append(line.split(DELIMITER)[2])
+			Y.append(line.split(DELIMITER)[3])
 
 	return (X, Y)
 
 def trainKFoldModel(X, Y, model):
 	accuracies = []
+	recalls = []
 
 	print('Starting KFold')
 
@@ -64,14 +66,19 @@ def trainKFoldModel(X, Y, model):
 		model.fit(train_X, train_Y)
 
 		print('Scoring')
-		one_fold_accuracy = model.score(valid_X, valid_Y)
-		print('Score on one fold = {}'.format(one_fold_accuracy))
+		predictions = model.predict(valid_X)
 
-		accuracies.append(one_fold_accuracy)
+		accuracy = accuracy_score(valid_Y, predictions)
+		recall = recall_score(valid_Y, predictions, average='weighted')
+		print('Accuracy on one fold = {}'.format(accuracy))
+		print('Recall on one fold = {}'.format(recall))
+
+		accuracies.append(accuracy)
+		recalls.append(recall)
 
 		print('Completed a kfold')
 
-	return np.mean(accuracies)
+	return (np.mean(accuracies), np.mean(recalls))
 
 def main():
 
@@ -85,8 +92,8 @@ def main():
 	# clf = SGDClassifier(random_state=314159)
 
 	## KFold training
-	kfold_accuracy = trainKFoldModel(X, Y, clf)
-	print('Overall KFold accuracy was {}'.format(kfold_accuracy))
+	kfold_accuracy, kfold_recall = trainKFoldModel(X, Y, clf)
+	print('Overall KFold accuracy was {} and recall was {}'.format(kfold_accuracy, kfold_recall))
 
 if __name__ == "__main__":
 	main()
