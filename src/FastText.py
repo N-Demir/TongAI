@@ -85,6 +85,7 @@ def main(continue_training):
 
 	#training with GPU
 	fastText = fastText.to(DEVICE)
+	fastText = fastText.to(DEVICE)
 	criterion = criterion.to(DEVICE)
 
 	# training params

@@ -4,8 +4,7 @@ import sys
 FILE_PATH = 'data/processed/final.csv'
 DELIMITER = '||'
 
-TRAIN_FILE_PATH = 'data/processed/fastTextInput_train.txt'
-VALID_FILE_PATH = 'data/processed/fastTextInput_valid.txt'
+DATA_PATH = 'data/processed/'
 LABEL_TAG = "__label__"
 
 def readInData(file_path):
@@ -17,18 +16,25 @@ def readInData(file_path):
 		for line in f:
 			assert(len(line.split(DELIMITER)) == 4)
 
-			X.append(line.split(DELIMITER)[3])
-			Y.append(line.split(DELIMITER)[2])
+			X.append(line.split(DELIMITER)[0:3])
+			Y.append(line.split(DELIMITER)[3].rstrip("\n"))
 
 	return (X, Y)
 
-def saveToNewFile(X, Y, file_path):
+def saveToNewFile(X, Y, file_tag):
 	numLines = len(X)
 	assert(len(X) == len(Y))
 
-	with open(file_path, 'w') as f:
+	# Save FastText version
+	with open(DATA_PATH + "fastText_" + file_tag + ".txt", 'w') as f:
 		for i in range(numLines):
-			f.write('%s%s %s' % (LABEL_TAG, Y[i], X[i]))
+			f.write('%s%s %s\n' % (LABEL_TAG, Y[i], X[i][2]))
+
+	# Save normal version
+	with open(DATA_PATH + "processed_" + file_tag + ".csv", 'w') as f:
+		for i in range(numLines):
+			f.write(X[i][0] + DELIMITER + X[i][1] + DELIMITER + X[i][2] + DELIMITER + Y[i] +'\n')
+
 
 
 def main():
@@ -38,9 +44,9 @@ def main():
 
 	X_train, X_valid, Y_train, Y_valid = train_test_split(X, Y, test_size=0.2)
 	print("Creating train file with ", len(X_train), " examples.")
-	saveToNewFile(X_train, Y_train, TRAIN_FILE_PATH)
+	saveToNewFile(X_train, Y_train, "train")
 	print("Creating valid file with ", len(X_valid), " examples.")
-	saveToNewFile(X_valid, Y_valid, VALID_FILE_PATH)
+	saveToNewFile(X_valid, Y_valid, "test")
 
 def _remove_label(source_file_path):
 	target_file_path = source_file_path[:-4] + "_noLabel.txt"
