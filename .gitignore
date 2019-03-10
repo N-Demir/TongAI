@@ -1,4 +1,7 @@
 .DS_STORE
 .env/
 data/
+outputs/
+randomstuff.py
+src/__pycache__
 test.py
