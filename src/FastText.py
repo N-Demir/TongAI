@@ -7,7 +7,7 @@ from sklearn.metrics import accuracy_score
 from math import ceil
 import sys
 
-MODEL_PATH = '../outputs/bestFastText.pth.tar'
+MODEL_PATH = '../outputs/bestFastText_4layer.pth.tar'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class FastText(nn.Module):
@@ -19,7 +19,11 @@ class FastText(nn.Module):
 
         self.fc_1 = nn.Linear(self.embedding.embedding_dim, hidden_size)
         self.relu_1 = nn.ReLU()
-        self.fc_2 = nn.Linear(hidden_size, num_classes)
+        self.fc_2 = nn.Linear(hidden_size, hidden_size)
+        self.relu_2 = nn.ReLU()
+        self.fc_3 = nn.Linear(hidden_size, hidden_size)
+        self.relu_3 = nn.ReLU()
+        self.fc_4 = nn.Linear(hidden_size, num_classes)
         self.softmax = nn.LogSoftmax(dim = -1)
 
         # self.fc_contrast = nn.Linear(self.embedding.embedding_dim, 1)
@@ -28,7 +32,10 @@ class FastText(nn.Module):
     def forward(self, X):
         embeded = self.embedding(X)
         avg = torch.mean(embeded, dim = 1) #average each sentence embeddings
-        output = self.softmax(self.fc_2(self.relu_1(self.fc_1(avg))))
+        output = self.relu_1(self.fc_1(avg))
+        output = self.relu_2(self.fc_2(output))
+        output = self.relu_3(self.fc_3(output))
+        output = self.softmax(self.fc_4(output))
         # contrast = self.sigmoid(self.fc_contrast(avg))
         # output = torch.cat((classes_prob, contrast), dim = -1)
         return output
@@ -127,10 +134,11 @@ def main(continue_training):
 if __name__ == "__main__":
 	continue_training = False
 	if len(sys.argv) > 1:
-		if sys.argv[1] == 'continue':
-			continue_training = True
+		if sys.argv[1] == 'continue' or sys.argv[1]=="new":
+			if sys.argv[1] == 'continue':
+				continue_training = True
+			main(continue_training)
 		elif sys.argv[1] != 'new':
 			print("Arg ", sys.argv[1], " not supported. Please use continue or new")
 	else:
 		print("Provide argument continue or new")
-	main(continue_training)
