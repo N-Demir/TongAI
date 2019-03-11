@@ -115,7 +115,7 @@ def main(continue_training):
 		outputs = fastText(X_eval)
 		loss = criterion(outputs, Y_eval)
 		predictions = torch.argmax(outputs, dim = -1)
-		accuracy = accuracy_score(Y_eval.numpy(), predictions.numpy())
+		accuracy = accuracy_score(Y_eval.cpu().numpy(), predictions.cpu().numpy())
 		print("epoch ", epoch, " eval_loss: ", loss.item(), " eval_accuracy : ", accuracy)
 		if accuracy > bestAccuracy:
 			torch.save(fastText.state_dict(), MODEL_PATH)
