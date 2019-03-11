@@ -81,12 +81,12 @@ def main(continue_training):
 		print("Loading model from ", MODEL_PATH)
 		fastText.load_state_dict(torch.load(MODEL_PATH))
 	criterion = nn.NLLLoss()
-	optimizer = Adam(fastText.parameters())
-
 	#training with GPU
 	fastText = fastText.to(DEVICE)
-	optimizer = optimizer.to(DEVICE)
 	criterion = criterion.to(DEVICE)
+
+	optimizer = Adam(fastText.parameters())
+
 
 	# training params
 	num_epochs = 100
