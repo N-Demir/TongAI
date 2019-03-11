@@ -34,7 +34,7 @@ class FastTextEmbeddingBag(EmbeddingBag):
 		batch_size = len(sentences)
 		max_sentence_len = len(sentences[0])
 
-		embeddings = torch.empty((batch_size, max_sentence_len, self.embedding_dim))
+		embeddings = torch.empty((batch_size, max_sentence_len, self.embedding_dim), device = self.device)
 		for i, sentence in enumerate(sentences):
 			word_subinds = np.empty([0], dtype=np.int64)
 			word_offsets = [0]
