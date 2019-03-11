@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from math import ceil
 import sys
+import time
 
 MODEL_PATH = '../outputs/bestFastText_4layer.pth.tar'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -125,6 +126,7 @@ def main(continue_training):
 		accuracy = accuracy_score(Y_eval.cpu().numpy(), predictions.cpu().numpy())
 		print("epoch ", epoch, " eval_loss: ", loss.item(), " eval_accuracy : ", accuracy)
 		if accuracy > bestAccuracy:
+			time.sleep(2)
 			torch.save(fastText.state_dict(), MODEL_PATH)
 			bestAccuracy = accuracy
 			bestEpoch = epoch
