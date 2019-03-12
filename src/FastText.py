@@ -135,7 +135,8 @@ def train(model_path):
 		accuracy = accuracy_score(Y_eval.cpu().numpy(), predictions.cpu().numpy())
 		print("epoch ", epoch, " eval_loss: ", loss.item(), " eval_accuracy : ", accuracy)
 		if accuracy > bestAccuracy:
-			os.rename(MODEL_PATH, SECOND_MODEL_PATH)
+			if epoch != 0:
+				os.rename(MODEL_PATH, SECOND_MODEL_PATH)
 			torch.save(fastText.state_dict(), MODEL_PATH)
 			bestAccuracy = accuracy
 			bestEpoch = epoch
