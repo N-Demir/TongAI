@@ -9,8 +9,8 @@ import sys
 import os
 import gc
 
-MODEL_PATH = '../outputs/bestFastText_4layer.pth.tar'
-SECOND_MODEL_PATH = '../outputs/bestFastText_4layer_2nd.pth.tar'
+MODEL_PATH = '../outputs/bestFastText_4l_retrn_embed.pth.tar'
+SECOND_MODEL_PATH = '../outputs/bestFastText_4l_retrn_embed_2nd.pth.tar'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class FastText(nn.Module):
