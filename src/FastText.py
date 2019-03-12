@@ -7,6 +7,7 @@ from sklearn.metrics import accuracy_score
 from math import ceil
 import sys
 import os
+import gc
 
 MODEL_PATH = '../outputs/bestFastText_4layer.pth.tar'
 SECOND_MODEL_PATH = '../outputs/bestFastText_4layer_2nd.pth.tar'
@@ -17,7 +18,7 @@ class FastText(nn.Module):
         super().__init__()
         
         self.embedding = FastTextEmbeddingBag(model_path, DEVICE)
-        self.embedding.weight.requires_grad = False
+        # self.embedding.weight.requires_grad = False
 
         self.fc_1 = nn.Linear(self.embedding.embedding_dim, hidden_size)
         self.relu_1 = nn.ReLU()
@@ -138,6 +139,7 @@ def train(model_path):
 			torch.save(fastText.state_dict(), MODEL_PATH)
 			bestAccuracy = accuracy
 			bestEpoch = epoch
+			gc.collect()
 	print("Best accuracy: ", bestAccuracy, " on epoch ", bestEpoch)
 
 def eval(model_path):
