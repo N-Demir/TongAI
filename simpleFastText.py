@@ -1,3 +1,32 @@
+"""
+Results:
+
+
+With embed_dim = 100 and 25002 in vocabulary:
+
+| Epoch: 01 | Train Loss: 2.145| Train Acc: 27.77% | Val. Loss: 1.868 | Val. Acc: 28.59% 
+| Epoch: 02 | Train Loss: 1.947| Train Acc: 28.32% | Val. Loss: 1.622 | Val. Acc: 36.41% 
+| Epoch: 03 | Train Loss: 1.834| Train Acc: 32.08% | Val. Loss: 1.407 | Val. Acc: 52.10% 
+| Epoch: 04 | Train Loss: 1.683| Train Acc: 44.07% | Val. Loss: 1.251 | Val. Acc: 60.42% 
+| Epoch: 05 | Train Loss: 1.531| Train Acc: 51.75% | Val. Loss: 1.147 | Val. Acc: 66.49% 
+| Epoch: 06 | Train Loss: 1.380| Train Acc: 59.22% | Val. Loss: 1.086 | Val. Acc: 70.12% 
+| Epoch: 07 | Train Loss: 1.245| Train Acc: 65.82% | Val. Loss: 1.088 | Val. Acc: 72.57% 
+| Epoch: 08 | Train Loss: 1.126| Train Acc: 70.07% | Val. Loss: 1.109 | Val. Acc: 74.41% 
+| Epoch: 09 | Train Loss: 1.019| Train Acc: 74.28% | Val. Loss: 1.142 | Val. Acc: 75.41% 
+| Epoch: 10 | Train Loss: 0.923| Train Acc: 76.97% | Val. Loss: 1.186 | Val. Acc: 75.82% 
+| Epoch: 11 | Train Loss: 0.842| Train Acc: 79.29% | Val. Loss: 1.231 | Val. Acc: 76.12% 
+| Epoch: 12 | Train Loss: 0.779| Train Acc: 80.67% | Val. Loss: 1.278 | Val. Acc: 76.95% 
+| Epoch: 13 | Train Loss: 0.729| Train Acc: 82.21% | Val. Loss: 1.323 | Val. Acc: 77.28% 
+| Epoch: 14 | Train Loss: 0.670| Train Acc: 83.55% | Val. Loss: 1.371 | Val. Acc: 77.15% 
+| Epoch: 15 | Train Loss: 0.625| Train Acc: 84.40% | Val. Loss: 1.412 | Val. Acc: 77.43% 
+| Epoch: 16 | Train Loss: 0.586| Train Acc: 85.46% | Val. Loss: 1.455 | Val. Acc: 77.96% 
+| Epoch: 17 | Train Loss: 0.547| Train Acc: 86.08% | Val. Loss: 1.496 | Val. Acc: 77.98% 
+| Epoch: 18 | Train Loss: 0.519| Train Acc: 87.27% | Val. Loss: 1.542 | Val. Acc: 78.36% 
+| Epoch: 19 | Train Loss: 0.482| Train Acc: 88.13% | Val. Loss: 1.589 | Val. Acc: 77.83% 
+| Epoch: 20 | Train Loss: 0.456| Train Acc: 88.70% | Val. Loss: 1.639 | Val. Acc: 77.60% 
+
+"""
+
 import torch
 from torchtext import data
 from torchtext import datasets
@@ -5,6 +34,7 @@ import random
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.autograd import Variable
 from pathlib import Path
 from datetime import datetime
 from sklearn.metrics import precision_recall_fscore_support
@@ -13,7 +43,7 @@ import numpy as np
 
 EPOCH_SAVE = 10
 EMBEDDING_DIM = 100
-OUTPUT_DIM = 1
+OUTPUT_DIM = 11
 BATCH_SIZE = 64
 N_EPOCHS = 200000
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -31,6 +61,8 @@ class FastText(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.fc = nn.Linear(embedding_dim, output_dim)
+
+        self.softmax = nn.LogSoftmax(dim=-1)
         
     def forward(self, x):
         
@@ -41,43 +73,43 @@ class FastText(nn.Module):
         #embedded = [sent len, batch size, emb dim]
         
         embedded = embedded.permute(1, 0, 2)
+
+        # print(embedded.shape)
+
+        # assert(embedded.shape == (BATCH_SIZE, x.shape[0], EMBEDDING_DIM))
         
         #embedded = [batch size, sent len, emb dim]
         
         pooled = F.avg_pool2d(embedded, (embedded.shape[1], 1)).squeeze(1) 
         
         #pooled = [batch size, embedding_dim]
-                
-        return self.fc(pooled)
+        # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
+        logits = self.fc(pooled)
+
+        return self.softmax(logits)
 
 def train(model, iterator, optimizer, loss_function):
     
     epoch_loss = 0.
     epoch_acc = 0.
-    epoch_real_prec = 0.
-    epoch_fake_prec = 0.
-    epoch_real_recall = 0.
-    epoch_fake_recall = 0.
-    epoch_real_f_score = 0.
-    epoch_fake_f_score = 0.
-    #epoch_roc = 0
     
     model.train()
     
     for batch_i, batch in enumerate(iterator):
-        print ("Starting Batch: %d" % batch_i)
+        # print ("Starting Batch: %d" % batch_i)
 
         optimizer.zero_grad()
+
+        # print("Input shape {}".format(batch.text.shape))
         
         logits = model(batch.text).squeeze(1)
         
-        loss = loss_function(logits, batch.label)
+        # print("Logits shape {}".format(logits.shape))
+        loss = loss_function(logits, Variable(batch.label.long()))
         
         acc = batch_accuracy(logits, batch.label)
-        precisions, recalls, f1_scores = batch_precision_recall_f_score(logits, batch.label)
-        #roc_score = batch_roc_score(logits, batch.label)
 
-        print ("Batch %d accuracy: %f" % (batch_i, acc))
+        # print ("Batch %d accuracy: %f" % (batch_i, acc))
         
         loss.backward()
         
@@ -85,29 +117,12 @@ def train(model, iterator, optimizer, loss_function):
         
         epoch_loss += loss.item()
         epoch_acc += acc.item()
-        epoch_real_prec += precisions[0]
-        epoch_fake_prec += precisions[1]
-        epoch_real_recall += recalls[0]
-        epoch_fake_recall += recalls[1]
-        epoch_real_f_score += f1_scores[0]
-        epoch_fake_f_score += f1_scores[1]
-        #epoch_roc += roc_score
-    
-    avg_prec = [epoch_real_prec / len(iterator), epoch_fake_prec / len(iterator)]
-    avg_recall = [epoch_real_recall / len(iterator),  epoch_fake_recall / len(iterator)]
-    avg_f_score = [epoch_real_f_score / len(iterator),  epoch_fake_f_score / len(iterator)]
-    return epoch_loss / len(iterator), epoch_acc / len(iterator), avg_prec, avg_recall, avg_f_score #, epoch_roc / len(iterator)
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
 def evaluate(model, iterator, loss_function):
     epoch_loss = 0.
     epoch_acc = 0.
-    epoch_real_prec = 0.
-    epoch_fake_prec = 0.
-    epoch_real_recall = 0.
-    epoch_fake_recall = 0.
-    epoch_real_f_score = 0.
-    epoch_fake_f_score = 0.
-    #epoch_roc = 0
     
     model.eval()
     with torch.no_grad():
@@ -115,56 +130,19 @@ def evaluate(model, iterator, loss_function):
 
             predictions = model(batch.text).squeeze(1)
             
-            loss = loss_function(predictions, batch.label)
+            loss = loss_function(predictions, Variable(batch.label.long()))
             
             acc = batch_accuracy(predictions, batch.label)
-            precisions, recalls, f1_scores = batch_precision_recall_f_score(predictions, batch.label)
-            #roc_score = batch_roc_score(predictions, batch.label)
 
             epoch_loss += loss.item()
             epoch_acc += acc.item()
-            epoch_real_prec += precisions[0]
-            epoch_fake_prec += precisions[1]
-            epoch_real_recall += recalls[0]
-            epoch_fake_recall += recalls[1]
-            epoch_real_f_score += f1_scores[0]
-            epoch_fake_f_score += f1_scores[1]
-            #epoch_roc += roc_score
-    
-    avg_prec = [epoch_real_prec / len(iterator), epoch_fake_prec / len(iterator)]
-    avg_recall = [epoch_real_recall / len(iterator),  epoch_fake_recall / len(iterator)]
-    avg_f_score = [epoch_real_f_score / len(iterator),  epoch_fake_f_score / len(iterator)]
-    return epoch_loss / len(iterator), epoch_acc / len(iterator), avg_prec, avg_recall, avg_f_score  #, epoch_roc / len(iterator)
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator) 
 
 def batch_accuracy(preds, y):
-    # Pass through sigmoid with decision bound at 0.5
-    rounded_preds = torch.round(torch.sigmoid(preds))
-    correct = (rounded_preds == y).float()
+    preds = torch.argmax(preds, dim=1)
+    correct = (preds == Variable(y.long())).float()
     return correct.sum() / len(correct)
-
-def batch_precision_recall_f_score(preds, y):
-    y_pred = torch.round(torch.sigmoid(preds))
-    y_pred = y_pred.detach().cpu().numpy()
-    y_true = y.detach().cpu().numpy()
-
-    precisions, recalls, f1_scores, _ = precision_recall_fscore_support(y_true, y_pred)
-    # In the case that y passed in is all one class, then we still want to return array with 2 elems
-    if len(precisions) != 2:
-        # If this happens because y is not all of one type then we have an issueeee
-        for a in y:
-            if y[0] != a: raise Exception('WHAT THE FUUUUUUCK')
-        if y[0] == 0:
-            return np.concatenate([precisions, [0.]]), np.concatenate([recalls, [0.]]), np.concatenate([f1_scores, [0.]])
-        else:
-            return np.concatenate([[0.], precisions]), np.concatenate([[0.], recalls]), np.concatenate([[0.], f1_scores])
-    return precisions, recalls, f1_scores
-
-
-def batch_roc_score(preds, y):
-    y_pred = torch.round(torch.sigmoid(preds))
-    y_pred = y_pred.detach().numpy()
-    y_true = y.detach().numpy() 
-    roc_score = roc_auc_score(y_true, y_pred)
 
 def main():
     # WTF is this supposed to do ?
@@ -185,7 +163,7 @@ def main():
     model.embedding.weight.data.copy_(pretrained_embeddings)
 
     optimizer = optim.Adam(model.parameters())
-    loss_function = nn.BCEWithLogitsLoss()
+    loss_function = nn.NLLLoss()
 
     # Allow for running on GPU
     model = model.to(DEVICE)
@@ -193,12 +171,12 @@ def main():
 
     for epoch in range(1, N_EPOCHS):
 
-        train_loss, train_acc, train_prec, train_recall, train_f_score = train(model, train_itr, optimizer, loss_function)
-        valid_loss, valid_acc, valid_prec, valid_recall, valid_f_score = evaluate(model, valid_itr, loss_function)
+        train_loss, train_acc = train(model, train_itr, optimizer, loss_function)
+        valid_loss, valid_acc = evaluate(model, valid_itr, loss_function)
         
-        print(f'| Epoch: {epoch:02} | Train Loss: {train_loss:.3f}| Train Acc: {train_acc*100:.2f}% | Train f1_score: {train_f_score}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% | Val. f1_score: {valid_f_score}%')
-        saveMetrics('train', train_acc, train_loss, train_prec, train_recall, train_f_score, epoch)
-        saveMetrics('valid', valid_acc, valid_loss, valid_prec, valid_recall, valid_f_score, epoch)
+        print(f'| Epoch: {epoch:02} | Train Loss: {train_loss:.3f}| Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
+        # saveMetrics('train', train_acc, train_loss, train_prec, train_recall, train_f_score, epoch)
+        # saveMetrics('valid', valid_acc, valid_loss, valid_prec, valid_recall, valid_f_score, epoch)
         if (epoch % EPOCH_SAVE == 0):
             saveModel(model, epoch)
 
