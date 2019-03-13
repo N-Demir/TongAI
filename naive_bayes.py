@@ -4,6 +4,8 @@ Run Naive Bayes for a baseline
 Results:
 Overall KFold accuracy was 0.5049024870280908 (5 folds)
 
+On just brain things: 0.7617668514586854 (5 folds)
+
 """
 
 
