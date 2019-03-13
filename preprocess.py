@@ -19,7 +19,7 @@ import xlrd
 file_path = 'data/neuro_protocol_sent_021419.xlsx'
 save_folder_path = 'data/processed/'
 
-DELIMITER = '||' # Hopefully this doesn't increase the size much haha
+DELIMITER = '|' # Hopefully this doesn't increase the size much haha
 
 #### Preprocess and format
 

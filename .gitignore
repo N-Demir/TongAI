@@ -1,3 +1,4 @@
+.vector_cache
 .DS_STORE
 .env/
 data/
