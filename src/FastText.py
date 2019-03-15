@@ -8,17 +8,27 @@ from math import ceil
 import sys
 import os
 import gc
+def load_src(name, fpath):
+    import os, imp
+    return imp.load_source(name, os.path.join(os.path.dirname(__file__), fpath))
+load_src('data_loader', '../data_loader.py')
+import data_loader
 
-MODEL_PATH = '../outputs/bestFastText_4l_retrn_embed.pth.tar'
-SECOND_MODEL_PATH = '../outputs/bestFastText_4l_retrn_embed_2nd.pth.tar'
+
+MODEL_PATH = '../outputs/bestFastText_4l.pth.tar'
+SECOND_MODEL_PATH = '../outputs/bestFastText_4l_2nd.pth.tar'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+NUM_EPOCHS = 100
+BATCH_SIZE = 128
+
+
 
 class FastText(nn.Module):
     def __init__(self, num_classes, hidden_size, model_path):
         super().__init__()
         
         self.embedding = FastTextEmbeddingBag(model_path, DEVICE)
-        # self.embedding.weight.requires_grad = False
+        self.embedding.weight.requires_grad = False
 
         self.fc_1 = nn.Linear(self.embedding.embedding_dim, hidden_size)
         self.relu_1 = nn.ReLU()
@@ -33,9 +43,9 @@ class FastText(nn.Module):
         # self.sigmoid = nn.Sigmoid()
         
     def forward(self, X):
-        embeded = self.embedding(X)
-        avg = torch.mean(embeded, dim = 1) #average each sentence embeddings
-        output = self.relu_1(self.fc_1(avg))
+        embedded = self.embedding(X)
+
+        output = self.relu_1(self.fc_1(embedded))
         output = self.relu_2(self.fc_2(output))
         output = self.relu_3(self.fc_3(output))
         output = self.softmax(self.fc_4(output))
@@ -44,6 +54,7 @@ class FastText(nn.Module):
         return output
 
 DELIMITER = '||'
+
 def readData(file_path):
 	# Let's dejsonify
 	X = []
@@ -59,22 +70,33 @@ def readData(file_path):
 	return (X, Y)
 
 def processX(X, max_len = 100):
-	num_sentences = len(X)
-	X_new = [['<pad>' for i in range(max_len)] for j in range(num_sentences)]
+	X_new = []
 	for i, sentence in enumerate(X):
-		assert(sentence == X[i])
-		words = sentence.replace("\n", "").split()
-		numWords = len(words)
-		final_ind = min(numWords, max_len)
-		X_new[i][:final_ind] = words[:final_ind]
+		words = data_loader.tokenizer(sentence)
+		X_new.append(words)
 	return X_new
+
 
 def processY(Y):
 	Y_new = [int(index.rstrip('\n')) for index in Y]
 	num_classes = len(set(Y_new))
 	return num_classes, torch.tensor(Y_new, dtype = torch.long, device = DEVICE)
 
+# WTF is this supposed to do ?
+def generate_bigrams(x):
+    n_grams = set(zip(*[x[i:] for i in range(2)]))
+    for n_gram in n_grams:
+        x.append(' '.join(n_gram))
+    return x
+
 def train(model_path):
+	# # Load the data-set
+	# TEXT, train_itr, valid_itr, test_itr = data_loader.load_data(generate_bigrams)
+
+	# for i, batch in enumerate(train_itr):
+	# 	print(batch.text)
+	# 	assert(False)
+	# assert(False)
 	# get Data
 	X, Y = readData("../data/processed/processed_train.csv")
 	X_eval, Y_eval = readData("../data/processed/processed_test.csv") 
@@ -96,21 +118,16 @@ def train(model_path):
 
 	optimizer = Adam(fastText.parameters())
 
-
-	# training params
-	num_epochs = 100
-	batch_size = 128
-
 	bestAccuracy = 0
 	bestEpoch = 0
-	for epoch in range(num_epochs):
+	for epoch in range(NUM_EPOCHS):
 		print("Beginning epoch ", epoch)
 		running_loss = 0
 		fastText.train()
 		numberCorrect = 0
-		for i in range(ceil(num_train / batch_size)):
-			beginIndex = i* batch_size
-			endIndex = min(beginIndex + batch_size, num_train)
+		for i in range(ceil(num_train / BATCH_SIZE)):
+			beginIndex = i * BATCH_SIZE
+			endIndex = min(beginIndex + BATCH_SIZE, num_train)
 			X_input = X_processed[beginIndex: endIndex]	
 			Y_input = Y_processed[beginIndex: endIndex]
 			optimizer.zero_grad()
