@@ -17,6 +17,10 @@ from fastText import load_model
 from torch.autograd import Variable
 
 
+# to do:
+# use spacy
+# have variable length
+
 class FastTextEmbeddingBag(EmbeddingBag):
 	def __init__(self, model_path, device):
 		self.model = load_model(model_path)
@@ -34,7 +38,7 @@ class FastTextEmbeddingBag(EmbeddingBag):
 		batch_size = len(sentences)
 		max_sentence_len = len(sentences[0])
 
-		embeddings = torch.empty((batch_size, max_sentence_len, self.embedding_dim), device = self.device)
+		embeddings = torch.empty((batch_size, self.embedding_dim), device = self.device)
 		for i, sentence in enumerate(sentences):
 			word_subinds = np.empty([0], dtype=np.int64)
 			word_offsets = [0]
@@ -45,7 +49,7 @@ class FastTextEmbeddingBag(EmbeddingBag):
 			word_offsets = word_offsets[:-1]
 			ind = Variable(torch.tensor(word_subinds, dtype = torch.long, device = self.device))
 			offsets = Variable(torch.tensor(word_offsets, dtype = torch.long, device = self.device))
-			embeddings[i] = super().forward(ind, offsets)
+			embeddings[i] = torch.mean(super().forward(ind, offsets), dim = 0) #embedding averaged before storing 
 		return embeddings
 
 
