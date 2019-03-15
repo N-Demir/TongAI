@@ -28,7 +28,7 @@ class FastText(nn.Module):
         super().__init__()
         
         self.embedding = FastTextEmbeddingBag(model_path, DEVICE)
-        self.embedding.weight.requires_grad = False
+        # self.embedding.weight.requires_grad = False
 
         self.fc_1 = nn.Linear(self.embedding.embedding_dim, hidden_size)
         self.relu_1 = nn.ReLU()
