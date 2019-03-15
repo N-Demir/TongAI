@@ -15,8 +15,8 @@ load_src('data_loader', '../data_loader.py')
 import data_loader
 
 
-MODEL_PATH = '../outputs/bestFastText_4l.pth.tar'
-SECOND_MODEL_PATH = '../outputs/bestFastText_4l_2nd.pth.tar'
+MODEL_PATH = '../outputs/bestFastText_4l_retrnemb.pth.tar'
+SECOND_MODEL_PATH = '../outputs/bestFastText_4l_retrnemb_2nd.pth.tar'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 NUM_EPOCHS = 100
 BATCH_SIZE = 128
