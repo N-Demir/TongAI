@@ -7,5 +7,4 @@ data/
 outputs/
 randomstuff.py
 src/__pycache__
-test.py
 *.pyc

@@ -22,11 +22,15 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import recall_score, accuracy_score
+import matplotlib.pyplot as plt
 
 import numpy as np
 
 FILE_PATH = 'data/processed/final.csv'
-DELIMITER = '||'
+DELIMITER = '|'
+CLASSES = ['mets', 'memory', 'multiple sclerosis', 'epilepsy', 'stereo/cyberknife', 'routine brain', 'sella', 'tumor brain', 'complex headache', 'brain trauma', 'stroke']
+
+KFOLDS = 5
 
 def readInData(file_path):
 	# Let's dejsonify
@@ -42,13 +46,26 @@ def readInData(file_path):
 
 	return (X, Y)
 
+def class_accuracy(preds, y):
+    class_correct = np.zeros(len(CLASSES))
+    class_counts = np.zeros(len(CLASSES))
+    for idx, pred in enumerate(preds):
+        pred = int(pred)
+        if pred == y[idx]:
+            class_correct[pred] += 1
+        class_counts[pred] += 1
+
+    return class_correct, class_counts
+
 def trainKFoldModel(X, Y, model):
 	accuracies = []
 	recalls = []
+	class_correct = np.zeros(len(CLASSES))
+	class_counts = np.zeros(len(CLASSES))
 
 	print('Starting KFold')
 
-	kf = KFold(n_splits=5, shuffle=True)
+	kf = KFold(n_splits=KFOLDS, shuffle=True)
 	for train_index, test_index in kf.split(X):
 		train_X, train_Y = X[train_index], Y[train_index]
 		valid_X, valid_Y = X[test_index], Y[test_index]
@@ -75,12 +92,16 @@ def trainKFoldModel(X, Y, model):
 		print('Accuracy on one fold = {}'.format(accuracy))
 		print('Recall on one fold = {}'.format(recall))
 
+		fold_class_correct, fold_class_counts = class_accuracy(predictions, valid_Y)
+		class_correct += fold_class_correct
+		class_counts += fold_class_counts
+
 		accuracies.append(accuracy)
 		recalls.append(recall)
 
 		print('Completed a kfold')
 
-	return (np.mean(accuracies), np.mean(recalls))
+	return np.mean(accuracies), np.mean(recalls), class_correct / KFOLDS, class_counts / KFOLDS 
 
 def main():
 
@@ -94,8 +115,18 @@ def main():
 	# clf = SGDClassifier(random_state=314159)
 
 	## KFold training
-	kfold_accuracy, kfold_recall = trainKFoldModel(X, Y, clf)
+	kfold_accuracy, kfold_recall, class_correct, class_counts = trainKFoldModel(X, Y, clf)
 	print('Overall KFold accuracy was {} and recall was {}'.format(kfold_accuracy, kfold_recall))
+
+	class_accuracy = np.divide(class_correct, class_counts)
+	print('Val class accuracies: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(accuracy) for idx, accuracy in enumerate(class_accuracy) ] ))
+	print('Val class counts: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(count) for idx, count in enumerate(class_counts) ] ))
+
+	plt.bar([klass for klass in CLASSES], [acc for acc in class_accuracy], 1.0, color='#8F1500')
+	axes = plt.gca()
+	axes.set_ylim([0.01,1.0])
+	plt.xticks(rotation='vertical')
+	plt.show()
 
 if __name__ == "__main__":
 	main()
