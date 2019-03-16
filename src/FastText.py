@@ -19,7 +19,7 @@ MODEL_PATH = '../outputs/bestFastText_4l_retrnemb.pth.tar'
 SECOND_MODEL_PATH = '../outputs/bestFastText_4l_retrnemb_2nd.pth.tar'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 NUM_EPOCHS = 100
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 
 
 
@@ -53,7 +53,7 @@ class FastText(nn.Module):
         # output = torch.cat((classes_prob, contrast), dim = -1)
         return output
 
-DELIMITER = '||'
+DELIMITER = '|'
 
 def readData(file_path):
 	# Let's dejsonify
@@ -98,8 +98,8 @@ def train(model_path):
 	# 	assert(False)
 	# assert(False)
 	# get Data
-	X, Y = readData("../data/processed/processed_train.csv")
-	X_eval, Y_eval = readData("../data/processed/processed_test.csv") 
+	X, Y = readData("../data/processed/train.csv")
+	X_eval, Y_eval = readData("../data/processed/valid.csv") 
 	X_processed = processX(X)
 	X_eval = processX(X_eval)
 	num_classes, Y_processed = processY(Y)
@@ -161,7 +161,7 @@ def train(model_path):
 	print("Best accuracy: ", bestAccuracy, " on epoch ", bestEpoch)
 
 def eval(model_path):
-	X_eval, Y_eval = readData("../data/processed/processed_test.csv") 
+	X_eval, Y_eval = readData("../data/processed/valid.csv") 
 	X_eval = processX(X_eval)
 	num_classes, Y_eval = processY(Y_eval)
 
