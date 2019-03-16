@@ -63,14 +63,14 @@ class FastText(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.fc = nn.Linear(embedding_dim, output_dim)
-        # self.fc_2 = nn.Linear(embedding_dim * 2, output_dim)
+        self.fc = nn.Linear(embedding_dim + 1, output_dim)
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
-    def forward(self, x):
+    def forward(self, x, age):
         
-        #x = [sent len, batch size]
+        # x = [sent len, batch size]
+        # age = [batch size, 1 (age)]
         
         embedded = self.embedding(x)
                 
@@ -88,9 +88,10 @@ class FastText(nn.Module):
         
         #pooled = [batch size, embedding_dim]
 
+        concat = torch.cat([pooled, age], dim=1)
+
         # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
-        logits = self.fc(pooled)
-        # logits = self.fc_2(logits)
+        logits = self.fc(concat)
 
         return self.softmax(logits)
 
