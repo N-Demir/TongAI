@@ -63,14 +63,18 @@ class FastText(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.fc = nn.Linear(embedding_dim, output_dim)
-        # self.fc_2 = nn.Linear(embedding_dim * 2, output_dim)
+        self.fc = nn.Linear(embedding_dim + 1 + 1, output_dim)
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
-    def forward(self, x):
+    def forward(self, x, age, gender):
         
-        #x = [sent len, batch size]
+        # x = [sent len, batch size]
+        # age = [batch size,]
+        # gender = [batch size,]
+
+        age = torch.reshape(age, (age.shape[0], 1))
+        gender = torch.reshape(gender, (gender.shape[0], 1))
         
         embedded = self.embedding(x)
                 
@@ -88,9 +92,10 @@ class FastText(nn.Module):
         
         #pooled = [batch size, embedding_dim]
 
+        concat = torch.cat([pooled, age, gender], dim=1)
+
         # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
-        logits = self.fc(pooled)
-        # logits = self.fc_2(logits)
+        logits = self.fc(concat)
 
         return self.softmax(logits)
 
@@ -110,8 +115,12 @@ def train(model, iterator, optimizer, loss_function):
         optimizer.zero_grad()
 
         # print("Input shape {}".format(batch.text.shape))
+
+        x = batch.text
+        age = batch.age
+        gender = batch.gender
         
-        logits = model(batch.text).squeeze(1)
+        logits = model(x, age, gender).squeeze(1)
         
         # print("Logits shape {}".format(logits.shape))
         loss = loss_function(logits, Variable(batch.label.long()))
@@ -143,10 +152,15 @@ def evaluate(model, iterator, loss_function):
     epoch_class_counts = torch.zeros(OUTPUT_DIM)
     
     model.eval()
+
     with torch.no_grad():
         for batch in iterator:
 
-            predictions = model(batch.text).squeeze(1)
+            x = batch.text
+            age = batch.age
+            gender = batch.gender
+
+            predictions = model(x, age, gender).squeeze(1)
             
             loss = loss_function(predictions, Variable(batch.label.long()))
             
@@ -176,7 +190,7 @@ def batch_class_accuracy(preds, y):
     for idx, pred in enumerate(preds):
         if pred == y[idx].long():
             class_correct[pred] += 1
-        class_counts[pred] += 1
+        class_counts[y[idx].long()] += 1
 
     return class_correct, class_counts
 
@@ -198,7 +212,7 @@ def main():
     pretrained_embeddings = TEXT.vocab.vectors
     model.embedding.weight.data.copy_(pretrained_embeddings)
 
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), weight_decay)
     loss_function = nn.NLLLoss()
 
     # Allow for running on GPU
