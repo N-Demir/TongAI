@@ -64,6 +64,7 @@ class FastText(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.fc = nn.Linear(embedding_dim, output_dim)
+        # self.fc_2 = nn.Linear(embedding_dim * 2, output_dim)
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
@@ -89,6 +90,7 @@ class FastText(nn.Module):
 
         # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
         logits = self.fc(pooled)
+        # logits = self.fc_2(logits)
 
         return self.softmax(logits)
 
@@ -203,6 +205,12 @@ def main():
     model = model.to(DEVICE)
     loss_function = loss_function.to(DEVICE)
 
+    best_valid_acc = 0
+    best_train_stats = (None, None) # loss, acc
+    best_valid_stats = (None, None, None, None) # loss, acc, class_acc, class_counts
+    best_model = None
+    best_epoch = 0
+
     try:
         for epoch in range(1, N_EPOCHS):
 
@@ -211,6 +219,14 @@ def main():
 
             train_class_acc = train_class_correct / train_class_counts
             valid_class_acc = valid_class_correct / valid_class_counts
+
+            if(valid_acc > best_valid_acc):
+                best_valid_acc = valid_acc
+                best_model = model
+                best_epoch = epoch
+                best_train_stats = (train_loss, train_acc)
+                best_valid_stats = (valid_loss, valid_acc, valid_class_acc, valid_class_counts)
+
             
             print(f'| Epoch: {epoch:02} | Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
             print()
@@ -221,12 +237,23 @@ def main():
 
 
     finally:
-
-        saveModel(model, epoch)
+        train_loss, train_acc= best_train_stats
+        valid_loss, valid_acc, valid_class_acc, valid_class_counts = best_valid_stats
+        saveModel(best_model, best_epoch)
         plt.bar([klass for klass in CLASSES], [acc for acc in valid_class_acc], 1.0, color='#8F1500')
         axes = plt.gca()
         axes.set_ylim([0.01,1.0])
         plt.xticks(rotation='vertical')
+        
+        #print stats
+        print(f'| Best Epoch: {best_epoch:02} | Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
+        print()
+        print('Val class accuracies: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(accuracy.item()) for idx, accuracy in enumerate(valid_class_acc) ] ))
+        print('Val class counts: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(count.item()) for idx, count in enumerate(valid_class_counts) ] ))
+        print()
+        print()
+
+        #show plot
         plt.show()
 
 def setupCheckpoints():
