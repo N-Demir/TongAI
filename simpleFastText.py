@@ -212,7 +212,7 @@ def main():
     pretrained_embeddings = TEXT.vocab.vectors
     model.embedding.weight.data.copy_(pretrained_embeddings)
 
-    optimizer = optim.Adam(model.parameters(), weight_decay)
+    optimizer = optim.Adam(model.parameters(), weight_decay=0.001)
     loss_function = nn.NLLLoss()
 
     # Allow for running on GPU
@@ -251,7 +251,7 @@ def main():
 
 
     finally:
-        train_loss, train_acc= best_train_stats
+        train_loss, train_acc = best_train_stats
         valid_loss, valid_acc, valid_class_acc, valid_class_counts = best_valid_stats
         saveModel(best_model, best_epoch)
         plt.bar([klass for klass in CLASSES], [acc for acc in valid_class_acc], 1.0, color='#8F1500')
