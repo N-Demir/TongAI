@@ -167,7 +167,7 @@ with open(save_folder_path + 'final.csv', 'r') as input:
 		X.append(line.split(DELIMITER)[0:3])
 		Y.append(line.split(DELIMITER)[3])
 
-X_train, X_valid, Y_train, Y_valid = train_test_split(X, Y, test_size=0.2)
+X_train, X_valid, Y_train, Y_valid = train_test_split(X, Y, test_size=0.2, random_state=315)
 
 with open(save_folder_path + 'valid.csv', 'w') as valid:
 	for i in range(len(X_valid)):

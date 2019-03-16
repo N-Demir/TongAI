@@ -154,7 +154,7 @@ def main():
         return x
 
     # Load the data-set
-    TEXT, train_itr, valid_itr, test_itr = data_loader.load_data(generate_bigrams)
+    TEXT, train_itr, valid_itr = data_loader.load_data(generate_bigrams)
 
     input_dim = len(TEXT.vocab)
 

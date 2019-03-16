@@ -155,7 +155,7 @@ def evaluate(model, iterator, loss_function):
 
 def main():
     # load the dataset
-    TEXT, train_itr, valid_itr, test_itr = data_loader.load_data()
+    TEXT, train_itr, valid_itr = data_loader.load_data()
     # train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
     # train_data, valid_data = train_data.split(random_state=random.seed(SEED))
     #

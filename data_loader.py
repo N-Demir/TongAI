@@ -12,7 +12,8 @@ import random
 # language models
 spacy_en = spacy.load('en')
 
-path = 'data/processed/final.csv'
+train_path = 'data/processed/train.csv'
+valid_path =  'data/processed/valid.csv'
 BATCH_SIZE = 64
 
 # Do this for testing
@@ -36,6 +37,13 @@ def tokenizer(text): # create a tokenizer function
     # Consider appending potentially named entity tags??
     return [tok.text for tok in spacy_en.tokenizer(text)]
 
+def genderToNum(gender):
+    assert(gender == 'm' or gender == 'f')
+    return 1 if gender == 'f' else 0
+
+def ageToInt(age):
+    return int(age[:-2])
+
 # Note that now everything is tsv but would like json!!
 def load_data(preprocessing=None):
     # Fields for the dataset
@@ -43,17 +51,23 @@ def load_data(preprocessing=None):
 
     #TEXT = Field(tokenize='spacy') # -- Old way, unclear exactly what language model is used
     TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, preprocessing=preprocessing)
+    AGE = Field(sequential = False, use_vocab = False, dtype = torch.long, preprocessing = ageToInt)
+    GENDER = Field(sequential = False, use_vocab = False, preprocessing = genderToNum, dtype = torch.int)
     LABEL = LabelField(dtype=torch.float)
 
     # Get the entire dataset that we will then split
-    data = TabularDataset(
-        path=path, format='csv',
-        fields=[('age', None), ('gender', None), ('text', TEXT), ('label', LABEL)],
+    train_data = TabularDataset(
+        path=train_path, format='csv',
+        fields=[('age', AGE), ('gender', GENDER), ('text', TEXT), ('label', LABEL)],
+        csv_reader_params={'delimiter':"|", 'quotechar': "\""})
+
+    valid_data = TabularDataset(
+        path=valid_path, format='csv',
+        fields=[('age', AGE), ('gender', GENDER), ('text', TEXT), ('label', LABEL)],
         csv_reader_params={'delimiter':"|", 'quotechar': "\""})
 
     # We should probabily look at the proportion of fake to non fake in each of these
     # set to make sure it is fairly even. Though probabilistically it should be I suppose
-    train_data, valid_data, test_data = data.split(split_ratio=TRAIN_VAL_TEST_SPLIT, random_state=random.seed(SEED))
     #valid_data, test_data = test_data.split(split_ratio=VAL_TEST_SPLIT, random_state=random.seed(SEED))
 
     print ('Size of train set: ' + str(len(train_data.examples)))
@@ -78,7 +92,7 @@ def load_data(preprocessing=None):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    train_itr, valid_itr, test_itr = BucketIterator.splits((train_data, valid_data, test_data),
+    train_itr, valid_itr = BucketIterator.splits((train_data, valid_data),
         batch_size=BATCH_SIZE, device=device, sort_key=lambda x: len(x.text))
 
-    return TEXT, train_itr, valid_itr, test_itr
+    return TEXT, train_itr, valid_itr
