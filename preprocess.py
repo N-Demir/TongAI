@@ -185,7 +185,8 @@ from collections import Counter
 
 a = Counter(class_length)
 
-plt.bar([k for k, v in a.most_common(100)], [v for k, v in a.most_common(100)], 1.0, color='g')
+plt.bar([k for k, v in a.most_common(100)], [v for k, v in a.most_common(100)], 1.0, color='#6495ED')
+plt.xticks(rotation='vertical')
 plt.show()
 
 outFile.close()

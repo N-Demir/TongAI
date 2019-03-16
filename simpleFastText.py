@@ -40,6 +40,7 @@ from datetime import datetime
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import roc_auc_score
 import numpy as np
+import matplotlib.pyplot as plt
 
 EPOCH_SAVE = 10
 EMBEDDING_DIM = 100
@@ -49,6 +50,8 @@ N_EPOCHS = 200000
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CURRENT_TIME = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 REPOSITORY_NAME = 'TongAI'
+
+CLASSES = ['mets', 'memory', 'multiple sclerosis', 'epilepsy', 'stereo/cyberknife', 'routine brain', 'sella', 'tumor brain', 'complex headache', 'brain trauma', 'stroke']
 
 #SEED = 1234
 #torch.manual_seed(SEED)
@@ -93,6 +96,9 @@ def train(model, iterator, optimizer, loss_function):
     
     epoch_loss = 0.
     epoch_acc = 0.
+
+    epoch_class_correct = torch.zeros(OUTPUT_DIM) # Num classes
+    epoch_class_counts = torch.zeros(OUTPUT_DIM)
     
     model.train()
     
@@ -119,11 +125,20 @@ def train(model, iterator, optimizer, loss_function):
         epoch_loss += loss.item()
         epoch_acc += acc.item()
 
-    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+        # Class accuracies
+        class_correct, class_counts = batch_class_accuracy(logits, batch.label)
+
+        epoch_class_correct += class_correct
+        epoch_class_counts += class_counts
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator), epoch_class_correct, epoch_class_counts
 
 def evaluate(model, iterator, loss_function):
     epoch_loss = 0.
     epoch_acc = 0.
+
+    epoch_class_correct = torch.zeros(OUTPUT_DIM) # Num classes
+    epoch_class_counts = torch.zeros(OUTPUT_DIM)
     
     model.eval()
     with torch.no_grad():
@@ -138,12 +153,30 @@ def evaluate(model, iterator, loss_function):
             epoch_loss += loss.item()
             epoch_acc += acc.item()
 
-    return epoch_loss / len(iterator), epoch_acc / len(iterator) 
+            # Class accuracies
+            class_correct, class_counts = batch_class_accuracy(predictions, batch.label)
+
+            epoch_class_correct += class_correct
+            epoch_class_counts += class_counts
+
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator), epoch_class_correct, epoch_class_counts
 
 def batch_accuracy(preds, y):
     preds = torch.argmax(preds, dim=1)
     correct = (preds == Variable(y.long())).float()
     return correct.sum() / len(correct)
+
+def batch_class_accuracy(preds, y):
+    class_correct = torch.zeros(OUTPUT_DIM)
+    class_counts = torch.zeros(OUTPUT_DIM)
+    preds = torch.argmax(preds, dim=1)
+    for idx, pred in enumerate(preds):
+        if pred == y[idx].long():
+            class_correct[pred] += 1
+        class_counts[pred] += 1
+
+    return class_correct, class_counts
 
 def main():
     # WTF is this supposed to do ?
@@ -170,16 +203,31 @@ def main():
     model = model.to(DEVICE)
     loss_function = loss_function.to(DEVICE)
 
-    for epoch in range(1, N_EPOCHS):
+    try:
+        for epoch in range(1, N_EPOCHS):
 
-        train_loss, train_acc = train(model, train_itr, optimizer, loss_function)
-        valid_loss, valid_acc = evaluate(model, valid_itr, loss_function)
-        
-        print(f'| Epoch: {epoch:02} | Train Loss: {train_loss:.3f}| Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
-        if (epoch % EPOCH_SAVE == 0):
-            saveModel(model, epoch)
+            train_loss, train_acc, train_class_correct, train_class_counts = train(model, train_itr, optimizer, loss_function)
+            valid_loss, valid_acc, valid_class_correct, valid_class_counts = evaluate(model, valid_itr, loss_function)
 
-    saveModel(model, epoch)
+            train_class_acc = train_class_correct / train_class_counts
+            valid_class_acc = valid_class_correct / valid_class_counts
+            
+            print(f'| Epoch: {epoch:02} | Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
+            print()
+            print('Val class accuracies: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(accuracy.item()) for idx, accuracy in enumerate(valid_class_acc) ] ))
+            print('Val class counts: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(count.item()) for idx, count in enumerate(valid_class_counts) ] ))
+            print()
+            print()
+
+
+    finally:
+
+        saveModel(model, epoch)
+        plt.bar([klass for klass in CLASSES], [acc for acc in valid_class_acc], 1.0, color='#8F1500')
+        axes = plt.gca()
+        axes.set_ylim([0.01,1.0])
+        plt.xticks(rotation='vertical')
+        plt.show()
 
 def setupCheckpoints():
     def get_repository_path():
