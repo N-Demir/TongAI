@@ -61,9 +61,12 @@ CLASSES = ['mets', 'memory', 'multiple sclerosis', 'epilepsy', 'stereo/cyberknif
 class FastText(nn.Module):
     def __init__(self, vocab_size, embedding_dim, output_dim):
         super().__init__()
+
+        hidden_size = 50
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.fc = nn.Linear(embedding_dim + 1, output_dim)
+        self.fc = nn.Linear(embedding_dim + 1, hidden_size)
+        self.hidden = nn.Linear(hidden_size, output_dim)
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
@@ -93,7 +96,8 @@ class FastText(nn.Module):
         concat = torch.cat([pooled, age], dim=1)
 
         # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
-        logits = self.fc(concat)
+        out = self.fc(concat)
+        logits = self.hidden(out)
 
         return self.softmax(logits)
 
