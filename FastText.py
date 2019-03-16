@@ -8,18 +8,15 @@ from math import ceil
 import sys
 import os
 import gc
-def load_src(name, fpath):
-    import os, imp
-    return imp.load_source(name, os.path.join(os.path.dirname(__file__), fpath))
-load_src('data_loader', '../data_loader.py')
 import data_loader
 
 
-MODEL_PATH = '../outputs/bestFastText_4l_retrnemb.pth.tar'
-SECOND_MODEL_PATH = '../outputs/bestFastText_4l_retrnemb_2nd.pth.tar'
+MODEL_PATH = 'outputs/bestFastText_4l_retrnemb.pth.tar'
+SECOND_MODEL_PATH = 'outputs/bestFastText_4l_retrnemb_2nd.pth.tar'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 NUM_EPOCHS = 100
-BATCH_SIZE = 64
+BATCH_SIZE = 128
+num_classes = 11
 
 
 
@@ -90,24 +87,24 @@ def generate_bigrams(x):
     return x
 
 def train(model_path):
-	# # Load the data-set
-	# TEXT, train_itr, valid_itr, test_itr = data_loader.load_data(generate_bigrams)
+	# WTF is this supposed to do ?
+	def generate_bigrams(x):
+		n_grams = set(zip(*[x[i:] for i in range(2)]))
+		for n_gram in n_grams:
+			x.append(' '.join(n_gram))
+		return x
 
-	# for i, batch in enumerate(train_itr):
-	# 	print(batch.text)
-	# 	assert(False)
-	# assert(False)
-	# get Data
-	X, Y = readData("../data/processed/train.csv")
-	X_eval, Y_eval = readData("../data/processed/valid.csv") 
+
+	X, Y = readData("data/processed/train.csv")
+	X_eval, Y_eval = readData("data/processed/valid.csv") 
 	X_processed = processX(X)
 	X_eval = processX(X_eval)
 	num_classes, Y_processed = processY(Y)
 	_, Y_eval = processY(Y_eval)
 
-	num_train = len(X)
+	# model
+	fastText = FastText(num_classes, num_classes * 2, "outputs/embeddings/fasttext_brain_embed.bin")
 
-	fastText = FastText(num_classes, num_classes * 2, "../outputs/embeddings/fasttext_brain_embed.bin")
 	if model_path != None:
 		print("Loading model from ", model_path)
 		fastText.load_state_dict(torch.load(model_path))
@@ -120,12 +117,14 @@ def train(model_path):
 
 	bestAccuracy = 0
 	bestEpoch = 0
+	num_train = len(X)
 	for epoch in range(NUM_EPOCHS):
 		print("Beginning epoch ", epoch)
 		running_loss = 0
 		fastText.train()
 		numberCorrect = 0
 		for i in range(ceil(num_train / BATCH_SIZE)):
+			print("batch: ", i)
 			beginIndex = i * BATCH_SIZE
 			endIndex = min(beginIndex + BATCH_SIZE, num_train)
 			X_input = X_processed[beginIndex: endIndex]	
@@ -133,24 +132,35 @@ def train(model_path):
 			optimizer.zero_grad()
 
 			outputs = fastText(X_input)
+
+			loss = criterion(outputs, Y_input)
+			loss.backward()
+			optimizer.step()
+
 			#calculate num correct
 			predictions = torch.argmax(outputs, dim = -1)
 			for i in range(len(predictions)):
 				numberCorrect += int(predictions[i] == Y_input[i])
 
-			loss = criterion(outputs, Y_input)
-			loss.backward()
-			optimizer.step()
 			running_loss += loss.item()
 		accuracy = numberCorrect / len(Y)
 		print("epoch ", epoch, " loss: ", running_loss, " train_accuracy: ", accuracy)
 
+		# evaluation
 		fastText.eval()
+
+		numberCorrect = 0
 		outputs = fastText(X_eval)
+
 		loss = criterion(outputs, Y_eval)
+		#calculate num correct
 		predictions = torch.argmax(outputs, dim = -1)
-		accuracy = accuracy_score(Y_eval.cpu().numpy(), predictions.cpu().numpy())
-		print("epoch ", epoch, " eval_loss: ", loss.item(), " eval_accuracy : ", accuracy)
+		for i in range(len(predictions)):
+			numberCorrect += int(predictions[i] == Y_eval[i])
+
+		accuracy = numberCorrect / len(Y_eval)
+		print("epoch ", epoch, " eval_loss: ", loss, " eval_accuracy: ", accuracy)
+
 		if accuracy > bestAccuracy:
 			if epoch != 0:
 				os.rename(MODEL_PATH, SECOND_MODEL_PATH)
@@ -161,24 +171,27 @@ def train(model_path):
 	print("Best accuracy: ", bestAccuracy, " on epoch ", bestEpoch)
 
 def eval(model_path):
-	X_eval, Y_eval = readData("../data/processed/valid.csv") 
-	X_eval = processX(X_eval)
-	num_classes, Y_eval = processY(Y_eval)
-
-	model = FastText(num_classes, num_classes * 2, "../outputs/embeddings/fasttext_brain_embed.bin")
-	model.load_state_dict(torch.load(model_path))
+	fastText = FastText(num_classes, num_classes * 2, "outputs/embeddings/fasttext_brain_embed.bin")
+	fastText.load_state_dict(torch.load(model_path))
 	criterion = nn.NLLLoss()
 	#evaluating with GPU
-	model = model.to(DEVICE)
+	fastText = fastText.to(DEVICE)
 	criterion = criterion.to(DEVICE)
-	model.eval()
 
-	outputs = model(X_eval)
+	# evaluation
+	fastText.eval()
+
+	numberCorrect = 0
+	outputs = fastText(X_eval)
+
 	loss = criterion(outputs, Y_eval)
+	#calculate num correct
 	predictions = torch.argmax(outputs, dim = -1)
-	accuracy = accuracy_score(Y_eval.cpu().numpy(), predictions.cpu().numpy())
-	print("eval_loss: ", loss.item(), " eval_accuracy : ", accuracy)
-	return accuracy
+	for i in range(len(predictions)):
+		numberCorrect += int(predictions[i] == Y_eval[i])
+
+	accuracy = numberCorrect / len(Y_eval)
+	print("epoch ", epoch, " eval_loss: ", loss, " eval_accuracy: ", accuracy)
 
 
 
