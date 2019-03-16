@@ -62,10 +62,11 @@ class FastText(nn.Module):
     def __init__(self, vocab_size, embedding_dim, output_dim):
         super().__init__()
 
-        hidden_size = 50
+        hidden_size = 100
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.fc = nn.Linear(embedding_dim + 1, hidden_size)
+        self.hidden1 = nn.Linear(hidden_size, hidden_size)
         self.hidden = nn.Linear(hidden_size, output_dim)
 
         self.softmax = nn.LogSoftmax(dim=-1)
@@ -97,6 +98,7 @@ class FastText(nn.Module):
 
         # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
         out = self.fc(concat)
+        out = self.hidden1(out)
         logits = self.hidden(out)
 
         return self.softmax(logits)
