@@ -194,8 +194,21 @@ def batch_class_accuracy(preds, y):
 
     return class_correct, class_counts
 
+def plot(class_acc):
+    plt.cla()
+
+    plt.bar([klass for klass in CLASSES], [acc for acc in class_acc], 1.0, color='#8F1500')
+    axes = plt.gca()
+    axes.set_ylim([0.01,1.0])
+    plt.xticks(rotation='vertical')
+
+    #show plot
+    plt.draw()
+    plt.pause(0.01)
+
 def main():
     # WTF is this supposed to do ?
+    # It generates bigrams dawgggg
     def generate_bigrams(x):
         n_grams = set(zip(*[x[i:] for i in range(2)]))
         for n_gram in n_grams:
@@ -212,7 +225,7 @@ def main():
     pretrained_embeddings = TEXT.vocab.vectors
     model.embedding.weight.data.copy_(pretrained_embeddings)
 
-    optimizer = optim.Adam(model.parameters(), weight_decay)
+    optimizer = optim.Adam(model.parameters())
     loss_function = nn.NLLLoss()
 
     # Allow for running on GPU
@@ -241,6 +254,8 @@ def main():
                 best_train_stats = (train_loss, train_acc)
                 best_valid_stats = (valid_loss, valid_acc, valid_class_acc, valid_class_counts)
 
+            plot(valid_class_acc)
+
             
             print(f'| Epoch: {epoch:02} | Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
             print()
@@ -251,13 +266,12 @@ def main():
 
 
     finally:
-        train_loss, train_acc= best_train_stats
+        train_loss, train_acc = best_train_stats
         valid_loss, valid_acc, valid_class_acc, valid_class_counts = best_valid_stats
         saveModel(best_model, best_epoch)
-        plt.bar([klass for klass in CLASSES], [acc for acc in valid_class_acc], 1.0, color='#8F1500')
-        axes = plt.gca()
-        axes.set_ylim([0.01,1.0])
-        plt.xticks(rotation='vertical')
+
+        plot(valid_class_acc)
+        plt.show()
         
         #print stats
         print(f'| Best Epoch: {best_epoch:02} | Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
@@ -266,9 +280,6 @@ def main():
         print('Val class counts: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(count.item()) for idx, count in enumerate(valid_class_counts) ] ))
         print()
         print()
-
-        #show plot
-        plt.show()
 
 def setupCheckpoints():
     def get_repository_path():
