@@ -70,7 +70,9 @@ class FastText(nn.Module):
     def forward(self, x, age):
         
         # x = [sent len, batch size]
-        # age = [batch size, 1 (age)]
+        # age = [batch size,]
+
+        age = torch.reshape(age, (age.shape[0], 1))
         
         embedded = self.embedding(x)
                 
@@ -111,8 +113,11 @@ def train(model, iterator, optimizer, loss_function):
         optimizer.zero_grad()
 
         # print("Input shape {}".format(batch.text.shape))
+
+        x = batch.text
+        age = batch.age
         
-        logits = model(batch.text).squeeze(1)
+        logits = model(x, age).squeeze(1)
         
         # print("Logits shape {}".format(logits.shape))
         loss = loss_function(logits, Variable(batch.label.long()))
@@ -147,7 +152,10 @@ def evaluate(model, iterator, loss_function):
     with torch.no_grad():
         for batch in iterator:
 
-            predictions = model(batch.text).squeeze(1)
+            x = batch.text
+            age = batch.age
+
+            predictions = model(x, age).squeeze(1)
             
             loss = loss_function(predictions, Variable(batch.label.long()))
             

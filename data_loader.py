@@ -51,7 +51,7 @@ def load_data(preprocessing=None):
 
     #TEXT = Field(tokenize='spacy') # -- Old way, unclear exactly what language model is used
     TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, preprocessing=preprocessing)
-    AGE = Field(sequential = False, use_vocab = False, dtype = torch.long, preprocessing = ageToInt)
+    AGE = Field(sequential = False, use_vocab = False, dtype = torch.float, preprocessing = ageToInt)
     GENDER = Field(sequential = False, use_vocab = False, preprocessing = genderToNum, dtype = torch.int)
     LABEL = LabelField(dtype=torch.float)
 
