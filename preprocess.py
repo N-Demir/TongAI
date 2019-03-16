@@ -13,6 +13,7 @@ Output is final.csv (Other intermediate files don't matter)
 """
 
 import numpy as np
+from sklearn.model_selection import train_test_split
 import re
 import xlrd
 
@@ -156,6 +157,26 @@ for line in inFile:
 print('Created classes are: {}'.format(classes))
 print('Total number: {}'.format(len(class_length)))
 print('For histogram purposes {}'.format(class_length))
+
+## train-test data split
+X = []
+Y = []
+with open(save_folder_path + 'final.csv', 'r') as input:
+	for line in input:
+		assert(len(line.split(DELIMITER)) == 4)
+		X.append(line.split(DELIMITER)[0:3])
+		Y.append(line.split(DELIMITER)[3])
+
+X_train, X_valid, Y_train, Y_valid = train_test_split(X, Y, test_size=0.2)
+
+with open(save_folder_path + 'valid.csv', 'w') as valid:
+	for i in range(len(X_valid)):
+		valid.write(DELIMITER.join(X_valid[i]) + DELIMITER + Y_valid[i])
+
+with open(save_folder_path + 'train.csv', 'w') as train:
+	for i in range(len(X_train)):
+		train.write(DELIMITER.join(X_train[i]) + DELIMITER + Y_train[i])
+
 
 #### Plotting
 
