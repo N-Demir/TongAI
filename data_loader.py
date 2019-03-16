@@ -39,10 +39,11 @@ def tokenizer(text): # create a tokenizer function
 
 def genderToNum(gender):
     assert(gender == 'm' or gender == 'f')
-    return 1 if gender == 'f' else 0
+    return 1.0 if gender == 'f' else 0.0
 
-def ageToInt(age):
-    return int(age[:-2])
+def ageToFloat(age):
+    # Divide by 10 to sort of normalize it
+    return float(age) / 10
 
 # Note that now everything is tsv but would like json!!
 def load_data(preprocessing=None):
@@ -51,8 +52,8 @@ def load_data(preprocessing=None):
 
     #TEXT = Field(tokenize='spacy') # -- Old way, unclear exactly what language model is used
     TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, preprocessing=preprocessing)
-    AGE = Field(sequential = False, use_vocab = False, dtype = torch.float, preprocessing = ageToInt)
-    GENDER = Field(sequential = False, use_vocab = False, preprocessing = genderToNum, dtype = torch.int)
+    AGE = Field(sequential = False, use_vocab = False, preprocessing = ageToFloat, dtype = torch.float)
+    GENDER = Field(sequential = False, use_vocab = False, preprocessing = genderToNum, dtype = torch.float)
     LABEL = LabelField(dtype=torch.float)
 
     # Get the entire dataset that we will then split
