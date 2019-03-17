@@ -66,7 +66,7 @@ class FastText(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.fc = nn.Linear(embedding_dim + 1 + 1, output_dim)
+        self.fc = nn.Linear(3 * embedding_dim + 1 + 1, output_dim)
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
@@ -80,20 +80,30 @@ class FastText(nn.Module):
         gender = torch.reshape(gender, (gender.shape[0], 1))
         
         embedded = self.embedding(x)
-                
+
+        sent_len = x.size(0)
+
+        nonzeros = (x != 1).sum(dim = 0)
         #embedded = [sent len, batch size, emb dim]
         
         embedded = embedded.permute(1, 0, 2)
 
-        # print(embedded.shape)
-
         # assert(embedded.shape == (BATCH_SIZE, x.shape[0], EMBEDDING_DIM))
         
         #embedded = [batch size, sent len, emb dim]
+
+        # averaged ignoring pad elements
+        summed = torch.sum(embedded, dim = 1)
+        mean = torch.addcdiv(torch.zeros(EMBEDDING_DIM, x.size(1)), torch.t(summed), nonzeros.float())
+        mean = torch.t(mean)
+        #mean = [batch size, embedding_dim]
         
-        pooled = F.avg_pool2d(embedded, (embedded.shape[1], 1)).squeeze(1) 
-        
-        #pooled = [batch size, embedding_dim]
+        maxed = F.max_pool2d(embedded, (embedded.shape[1], 1)).squeeze(1)
+        #maxed = [batch size, embedding_dim]
+        mined = -F.max_pool2d(-embedded, (embedded.shape[1], 1)).squeeze(1) #because there's no min pool
+        #mined = [batch size, embedding_dim]
+        pooled = torch.cat([maxed, mean, mined], dim = 1)
+        #pooled = [batch size, 3* embedding_dim]
 
         concat = torch.cat([pooled, age, gender], dim=1)
 
