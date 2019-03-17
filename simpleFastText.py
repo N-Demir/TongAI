@@ -28,6 +28,9 @@ With embed_dim = 100 and 25002 in vocabulary:
 With age + gender:
 Best result was 79.59 so far
 
+With the concat embeddings and age + gender discretized:
+80.61
+
 """
 import torch
 from torchtext import data
@@ -66,7 +69,7 @@ class FastText(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.fc = nn.Linear(3 * embedding_dim + 1 + 1, output_dim)
+        self.fc = nn.Linear(3 * embedding_dim + 11 + 2, output_dim)
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
@@ -75,9 +78,6 @@ class FastText(nn.Module):
         # x = [sent len, batch size]
         # age = [batch size,]
         # gender = [batch size,]
-
-        age = torch.reshape(age, (age.shape[0], 1))
-        gender = torch.reshape(gender, (gender.shape[0], 1))
         
         embedded = self.embedding(x)
 

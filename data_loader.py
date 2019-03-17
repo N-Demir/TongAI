@@ -6,6 +6,8 @@ from torchtext import datasets
 import torch
 from torch.nn import functional as F
 import random
+import numpy as np
+import math
 
 # English language model
 # Though we should play potentially with different
@@ -39,11 +41,15 @@ def tokenizer(text): # create a tokenizer function
 
 def genderToNum(gender):
     assert(gender == 'm' or gender == 'f')
-    return 1.0 if gender == 'f' else 0.0
+    return [1, 0] if gender == 'f' else [0, 1]
 
 def ageToFloat(age):
-    # Divide by 100 to sort of normalize it
-    return float(age) / 100
+    # # Divide by 100 to sort of normalize it
+    # return float(age) / 100
+    arr = np.zeros(11)
+    arr[math.floor(float(age) / 10)] = 1
+    return arr
+
 
 # Note that now everything is tsv but would like json!!
 def load_data(preprocessing=None):
