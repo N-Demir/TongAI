@@ -53,16 +53,18 @@ import torch.optim as optim
 from torch.autograd import Variable
 from pathlib import Path
 from datetime import datetime
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, confusion_matrix, precision_recall_fscore_support
+from sklearn.utils.multiclass import unique_labels
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 EPOCH_SAVE = 10
 EMBEDDING_DIM = 300
 OUTPUT_DIM = 11
 BATCH_SIZE = 64
 N_EPOCHS = 200000
+DROPOUT_RATE = 0.5
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CURRENT_TIME = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 REPOSITORY_NAME = 'TongAI'
@@ -79,7 +81,13 @@ class FastText(nn.Module):
         super().__init__()
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        # self.embedding.weight.requires_grad = False
+
         self.fc = nn.Linear(3 * embedding_dim + 11 + 2, output_dim)
+        # self.fc_2 = nn.Linear(3 * embedding_dim, 3 * embedding_dim)
+        # self.fc_3 = nn.Linear(3 * embedding_dim, embedding_dim)
+        # self.fc_4 = nn.Linear(embedding_dim, output_dim)
+
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
@@ -119,6 +127,12 @@ class FastText(nn.Module):
 
         # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
         logits = self.fc(concat)
+        # logits = F.dropout(logits, p = DROPOUT_RATE)
+        # logits = F.relu(self.fc_2(logits))
+        # logits = F.dropout(logits, p = DROPOUT_RATE)
+        # logits = F.relu(self.fc_3(logits))
+        # logits = F.dropout(logits, p = DROPOUT_RATE)
+        # logits = self.fc_4(logits)
 
         return self.softmax(logits)
 
@@ -201,6 +215,84 @@ def evaluate(model, iterator, loss_function):
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator), epoch_class_correct, epoch_class_counts
 
+def error_analysis(model, iterator):
+
+    model.eval()
+    y_preds = []
+    labels = []
+    for batch_i, batch in enumerate(iterator):
+        x = batch.text
+        age = batch.age
+        gender = batch.gender
+
+        predictions = model(x, age, gender).squeeze(1)
+        y_pred = predictions.argmax(dim = 1).cpu().numpy()
+        y_preds.append(y_pred)
+        labels.append(batch.label.int().cpu().numpy())
+    y_true = np.concatenate(labels)
+    y_pred = np.concatenate(y_preds)
+    print(y_true.shape)
+    print(y_pred.shape)
+    print(batch.dataset.examples)
+    plot_confusion_matrix(y_true, y_pred, CLASSES, normalize = True)
+    plt.show()
+
+
+
+# Taken from sklearn
+def plot_confusion_matrix(y_true, y_pred, classes,
+                          normalize=False,
+                          title=None,
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
+
+    # Compute confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    # # Only use the labels that appear in the data
+    # classes = classes[unique_labels(y_true, y_pred)]
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    # We want to show all ticks...
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    return ax        
+
 def batch_accuracy(preds, y):
     preds = torch.argmax(preds, dim=1)
     correct = (preds == Variable(y.long())).float()
@@ -248,6 +340,12 @@ def main():
     pretrained_embeddings = TEXT.vocab.vectors
     model.embedding.weight.data.copy_(pretrained_embeddings)
 
+    if len(sys.argv) == 2:
+        model_path = sys.argv[1]
+        model.load_state_dict(torch.load(model_path))
+        error_analysis(model, valid_itr)
+        return
+
     optimizer = optim.Adam(model.parameters())
     loss_function = nn.NLLLoss()
 
@@ -294,7 +392,6 @@ def main():
         saveModel(best_model, best_epoch)
 
         plot(valid_class_acc)
-        plt.show()
         
         #print stats
         print(f'| Best Epoch: {best_epoch:02} | Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
@@ -303,6 +400,8 @@ def main():
         print('Val class counts: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(count.item()) for idx, count in enumerate(valid_class_counts) ] ))
         print()
         print()
+        plt.show()
+
 
 def setupCheckpoints():
     def get_repository_path():
