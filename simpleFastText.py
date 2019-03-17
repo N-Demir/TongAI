@@ -63,6 +63,7 @@ EMBEDDING_DIM = 300
 OUTPUT_DIM = 11
 BATCH_SIZE = 64
 N_EPOCHS = 200000
+DROPOUT_RATE = 0.6
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CURRENT_TIME = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 REPOSITORY_NAME = 'TongAI'
@@ -80,6 +81,8 @@ class FastText(nn.Module):
         
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.fc = nn.Linear(3 * embedding_dim + 11 + 2, output_dim)
+        self.fc_2 = nn.Linear(embedding_dim, output_dim)
+
 
         self.softmax = nn.LogSoftmax(dim=-1)
         
@@ -118,7 +121,9 @@ class FastText(nn.Module):
         concat = torch.cat([pooled, age, gender], dim=1)
 
         # assert(pooled.shape == (BATCH_SIZE, EMBEDDING_DIM))
-        logits = self.fc(concat)
+        logits = F.relu(self.fc(concat))
+        logits = F.dropout(logits, p = DROPOUT_RATE)
+        logits = self.fc_2(logits)
 
         return self.softmax(logits)
 
@@ -294,7 +299,6 @@ def main():
         saveModel(best_model, best_epoch)
 
         plot(valid_class_acc)
-        plt.show()
         
         #print stats
         print(f'| Best Epoch: {best_epoch:02} | Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}% | Val. Loss: {valid_loss:.3f} | Val. Acc: {valid_acc*100:.2f}% ')
@@ -303,6 +307,8 @@ def main():
         print('Val class counts: {}'.format([ CLASSES[idx] + ' ' + "{:.3f}".format(count.item()) for idx, count in enumerate(valid_class_counts) ] ))
         print()
         print()
+        plt.show()
+
 
 def setupCheckpoints():
     def get_repository_path():
