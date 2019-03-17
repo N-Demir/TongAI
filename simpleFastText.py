@@ -25,6 +25,9 @@ With embed_dim = 100 and 25002 in vocabulary:
 | Epoch: 19 | Train Loss: 0.482| Train Acc: 88.13% | Val. Loss: 1.589 | Val. Acc: 77.83% 
 | Epoch: 20 | Train Loss: 0.456| Train Acc: 88.70% | Val. Loss: 1.639 | Val. Acc: 77.60% 
 
+With age + gender:
+Best result was 79.59 so far
+
 """
 import torch
 from torchtext import data
