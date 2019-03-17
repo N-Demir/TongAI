@@ -231,9 +231,6 @@ def error_analysis(model, iterator):
         labels.append(batch.label.int().cpu().numpy())
     y_true = np.concatenate(labels)
     y_pred = np.concatenate(y_preds)
-    print(y_true.shape)
-    print(y_pred.shape)
-    print(batch.dataset.examples)
     plot_confusion_matrix(y_true, y_pred, CLASSES, normalize = True)
     plt.show()
 
@@ -322,8 +319,6 @@ def plot(class_acc):
     plt.pause(0.01)
 
 def main():
-    # WTF is this supposed to do ?
-    # It generates bigrams dawgggg
     def generate_bigrams(x):
         n_grams = set(zip(*[x[i:] for i in range(2)]))
         for n_gram in n_grams:
