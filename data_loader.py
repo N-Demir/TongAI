@@ -42,8 +42,8 @@ def genderToNum(gender):
     return 1.0 if gender == 'f' else 0.0
 
 def ageToFloat(age):
-    # Divide by 10 to sort of normalize it
-    return float(age) / 10
+    # Divide by 100 to sort of normalize it
+    return float(age) / 100
 
 # Note that now everything is tsv but would like json!!
 def load_data(preprocessing=None):
