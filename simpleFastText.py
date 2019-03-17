@@ -36,6 +36,10 @@ Just age
 
 Just gender
 28 % (it learns to just classify mets)
+
+With fasttext 300d
+81.79
+
 """
 
 import torch
@@ -55,7 +59,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 EPOCH_SAVE = 10
-EMBEDDING_DIM = 100
+EMBEDDING_DIM = 300
 OUTPUT_DIM = 11
 BATCH_SIZE = 64
 N_EPOCHS = 200000

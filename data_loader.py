@@ -51,18 +51,14 @@ def ageToFloat(age):
     return arr
 
 
-# Note that now everything is tsv but would like json!!
-def load_data(preprocessing=None):
-    # Fields for the dataset
-    # The actual review message
 
-    #TEXT = Field(tokenize='spacy') # -- Old way, unclear exactly what language model is used
+def load_data(preprocessing=None):
+
     TEXT = Field(sequential=True, tokenize=tokenizer, lower=True, preprocessing=preprocessing)
     AGE = Field(sequential = False, use_vocab = False, preprocessing = ageToFloat, dtype = torch.float)
     GENDER = Field(sequential = False, use_vocab = False, preprocessing = genderToNum, dtype = torch.float)
     LABEL = LabelField(dtype=torch.float)
 
-    # Get the entire dataset that we will then split
     train_data = TabularDataset(
         path=train_path, format='csv',
         fields=[('age', AGE), ('gender', GENDER), ('text', TEXT), ('label', LABEL)],
@@ -73,26 +69,13 @@ def load_data(preprocessing=None):
         fields=[('age', AGE), ('gender', GENDER), ('text', TEXT), ('label', LABEL)],
         csv_reader_params={'delimiter':"|", 'quotechar': "\""})
 
-    # We should probabily look at the proportion of fake to non fake in each of these
-    # set to make sure it is fairly even. Though probabilistically it should be I suppose
-    #valid_data, test_data = test_data.split(split_ratio=VAL_TEST_SPLIT, random_state=random.seed(SEED))
-
     print ('Size of train set: ' + str(len(train_data.examples)))
     print ('Size of val / test: ' + str(len(valid_data.examples)))
 
-    '''
-    # Try loading in the IMB dataset to label pos or negative
-    train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
-    # Get train/valid split!!
-    train_data, valid_data = train_data.split(random_state=random.seed(SEED))
-    '''
 
-    # Now we need to build the vocab for our actual data
-    # Here we will use the pre-trained word vetors from "glove.6b.100"
-    TEXT.build_vocab(train_data, max_size=25000, vectors="glove.6B.100d")
+    TEXT.build_vocab(train_data, max_size=250000, vectors="fasttext.en.300d")
     LABEL.build_vocab(train_data)
 
-    # Print stuff for sanity checks
     print ('Size of the vocab: ' + str(len(TEXT.vocab)))
     print ("Vector size of Text Vocabulary: ", TEXT.vocab.vectors.size())
     print ("Label Length: " + str(len(LABEL.vocab)))
