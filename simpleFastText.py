@@ -31,7 +31,13 @@ Best result was 79.59 so far
 With the concat embeddings and age + gender discretized:
 80.61
 
+Just age
+32 %
+
+Just gender
+28 % (it learns to just classify mets)
 """
+
 import torch
 from torchtext import data
 from torchtext import datasets
